@@ -3,12 +3,13 @@ import java.net.*;
 
 public class Server {
     int port;
+    boolean stopAfterOne = false;
     String keyword = "";
 
     public static void main(String[] args) throws IOException {
         Server server = new Server();
         server.parseArgs(args);
-        server.encyptMsg(server.port);
+        server.waitForWork(server.port);
     }
 
     void parseArgs(String[] args)
@@ -24,33 +25,23 @@ public class Server {
         }
     }
 
-    void encyptMsg(int port) {
-        PrintWriter out = null;
-        BufferedReader in = null;
-        String msg = "";
+    void waitForWork(int port) {
+        ServerSocket serverSocket = null;
         try
         {
-            ServerSocket sSocket = new ServerSocket(port);
-            Socket cSocket = sSocket.accept();
-            cSocket.setSoTimeout(5000);
-            out = new PrintWriter(cSocket.getOutputStream(), true);
-            InputStream inputStream = cSocket.getInputStream();
-            DataInputStream dataInputStream = new DataInputStream(inputStream);
-            msg = dataInputStream.readUTF();
-            String[] splitString = msg.split("\n", 2);
-            keyword = splitString[0];
-            msg = splitString[1];
-            out.print(vigCipher(msg, keyword));
-            out.flush();
-            out.close();
-        }
-        catch(SocketTimeoutException e)
-        {
-            assert out != null;
-            out.print(vigCipher(msg, keyword));
-            out.flush();
-            out.close();
+            serverSocket = new ServerSocket(port);
+            serverSocket.setReuseAddress(true);
 
+            while (true)
+            {
+                Socket cSocket = serverSocket.accept();
+                System.out.println("New client connected: " + cSocket.getInetAddress().getHostAddress());
+
+                Decrypter clientDecrypter = new Decrypter(cSocket);
+                new Thread(clientDecrypter).start();
+                if (stopAfterOne)
+                    return;
+            }
         }
         catch (UnknownHostException e)
         {
@@ -62,45 +53,87 @@ public class Server {
             System.err.println("I/O exception. " + e.getMessage());
             System.exit(1);
         }
+        finally
+        {
+            if (serverSocket != null)
+            {
+                try
+                {
+                    serverSocket.close();
+                }
+                catch (IOException e) {
+                    System.err.println("Could not close server socket.");
+                    System.exit(1);
+                }
+            }
+        }
     }
 
-    String vigCipher (String msg, String keyword)
+    private static class Decrypter implements Runnable
+    {
+        private final Socket cSocket;
+
+        public Decrypter(Socket socket)
+        {
+            cSocket = socket;
+        }
+
+        public void run()
+        {
+            PrintWriter out = null;
+            BufferedReader in = null;
+            String msg = "";
+            String keyword = "";
+            try
+            {
+                out = new PrintWriter(cSocket.getOutputStream(), true);
+                InputStream inputStream = cSocket.getInputStream();
+                DataInputStream dataInputStream = new DataInputStream(inputStream);
+                msg = dataInputStream.readUTF();
+                String[] splitString = msg.split("\n", 2);
+                keyword = splitString[0];
+                msg = splitString[1];
+                out.print(decryptMsg(msg, keyword));
+                out.flush();
+            }
+            catch (IOException e)
+            {
+                System.err.println("I/O exception. " + e.getMessage());
+                System.exit(1);
+            }
+            finally
+            {
+                if (out != null)
+                {
+                    out.close();
+                }
+            }
+        }
+    }
+
+    static String decryptMsg(String msg, String keyword)
     {
         StringBuilder emsg = new StringBuilder();
         if (keyword.length() < msg.length())
         {
             keyword = keyExtend(msg.length(), keyword);
         }
-        final String lower = "abcdefghijklmnopqrstuvwxyz";
-        final String upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
         for (int i = 0; i < msg.length(); i++)
         {
-            int pos = -1;
-            int shift = -1;
-            char nchar = 0;
-            keyword = keyword.toLowerCase();
-            shift = lower.indexOf(keyword.charAt(i));
-            if ((pos = lower.indexOf(msg.charAt(i))) != -1)
+            if (Character.isLetter(msg.charAt(i)))
             {
-                int key = (shift + pos) % 26;
-                nchar = lower.charAt(key);
+                char nchar = msg.charAt(i);
+                int ascii = (int) nchar - 'A';
+                int shift = keyword.charAt(i) - 'A';
+                nchar = (char) (((ascii - shift) % 26 + 26) % 26 + 'A');
+                emsg.append(nchar);
             }
-            else if ((pos = upper.indexOf(msg.charAt(i))) != -1)
-            {
-                int key = (shift + pos) % 26;
-                nchar = upper.charAt(key);
-            }
-            else
-            {
-                nchar = msg.charAt(i);
-            }
-            emsg.append(nchar);
         }
         return emsg.toString();
     }
 
-    String keyExtend (int keySize, String keyword)
+    static String keyExtend(int keySize, String keyword)
     {
         int initSize = keyword.length();
         for (int i = 0;; i++)

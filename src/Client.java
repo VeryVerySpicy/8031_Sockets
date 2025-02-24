@@ -5,7 +5,7 @@ import java.net.UnknownHostException;
 
 public class Client {
 
-    String encryptedmsg = "";
+    String decryptedMsg = "";
     String ip = "";
     String filename = "";
     String keyword;
@@ -17,9 +17,9 @@ public class Client {
         Client client = new Client();
         client.parseArgs(args);
         String msg = client.readFile(client.filename);
-        client.encryptedmsg = client.encryptMsg(msg, client.ip, client.port, client.keyword);
+        client.decryptedMsg = client.decryptMsg(msg, client.ip, client.port, client.keyword);
         System.out.println("The encrypted message is: \n");
-        System.out.println(client.encryptedmsg);
+        System.out.println(client.getDecryptedMsg());
     }
 
     void parseArgs(String[] args) throws TestException {
@@ -79,7 +79,7 @@ public class Client {
         return msg.toString();
     }
 
-    String encryptMsg(String msg, String ip, int port, String keyword) throws TestException {
+    String decryptMsg(String msg, String ip, int port, String keyword) throws TestException {
         String emsg = "";
         try {
             Socket socket = new Socket(ip, port);
@@ -108,6 +108,10 @@ public class Client {
             throw new RuntimeException(e);
         }
         return emsg;
+    }
+
+    public String getDecryptedMsg() {
+        return decryptedMsg;
     }
 }
 
