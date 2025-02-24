@@ -1,7 +1,6 @@
 import java.io.*;
 import java.net.*;
 
-
 public class Server {
     int port;
     String keyword = "";
@@ -25,7 +24,7 @@ public class Server {
         }
     }
 
-    void encyptMsg(int port) throws IOException {
+    void encyptMsg(int port) {
         PrintWriter out = null;
         BufferedReader in = null;
         String msg = "";
@@ -38,7 +37,6 @@ public class Server {
             InputStream inputStream = cSocket.getInputStream();
             DataInputStream dataInputStream = new DataInputStream(inputStream);
             msg = dataInputStream.readUTF();
-            System.out.println("encryptMsg : " + msg);
             String[] splitString = msg.split("\n", 2);
             keyword = splitString[0];
             msg = splitString[1];
@@ -68,8 +66,6 @@ public class Server {
 
     String vigCipher (String msg, String keyword)
     {
-        System.out.println("Vig Cipher msg: " + msg);
-        System.out.println("Vig Cipher keyword: " + keyword);
         StringBuilder emsg = new StringBuilder();
         if (keyword.length() < msg.length())
         {
@@ -85,7 +81,6 @@ public class Server {
             char nchar = 0;
             keyword = keyword.toLowerCase();
             shift = lower.indexOf(keyword.charAt(i));
-            System.out.println("Shift : " + shift);
             if ((pos = lower.indexOf(msg.charAt(i))) != -1)
             {
                 int key = (shift + pos) % 26;
@@ -107,9 +102,11 @@ public class Server {
 
     String keyExtend (int keySize, String keyword)
     {
+        int initSize = keyword.length();
         for (int i = 0;; i++)
         {
-            if (keySize == i)
+
+            if (initSize == i)
             {
                 i = 0;
             }
@@ -124,6 +121,7 @@ public class Server {
             }
             keyword += keyword.charAt(i);
         }
+        System.out.println(keyword);
         return keyword;
     }
 }

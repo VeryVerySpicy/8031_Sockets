@@ -9,6 +9,7 @@ public class Client {
     String ip = "";
     String filename = "";
     String keyword;
+    String fileContents;
     int port = 0;
 
     public static void main(String[] args) throws Exception
@@ -21,12 +22,11 @@ public class Client {
         System.out.println(client.encryptedmsg);
     }
 
-    void parseArgs(String[] args)
-    {
+    void parseArgs(String[] args) throws TestException {
         if (args.length != 4)
         {
             System.err.println("Incorrect number of arguments.");
-            System.exit(1);
+            throw new TestException(1, "Incorrect number of arguments.");
         }
         else
         {
@@ -37,11 +37,10 @@ public class Client {
         }
     }
 
-    String readFile(String filename) throws IOException
-    {
+    String readFile(String filename) throws TestException {
         if (filename.isEmpty())
         {
-            System.exit(1);
+            throw new TestException(1, "Filename is empty.");
         }
         File file;
         file = new File(filename);
@@ -76,25 +75,19 @@ public class Client {
                 System.exit(1);
             }
         }
+        fileContents = msg.toString();
         return msg.toString();
     }
 
-    String encryptMsg(String msg, String ip, int port, String keyword) throws IOException
-    {
+    String encryptMsg(String msg, String ip, int port, String keyword) throws TestException {
         String emsg = "";
         try {
             Socket socket = new Socket(ip, port);
             OutputStream outputStream = socket.getOutputStream();
             DataOutputStream dataOutputStream = new DataOutputStream(outputStream);
             dataOutputStream.writeUTF(keyword + msg);
-            dataOutputStream.flush(); // send the message
-
-            //PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+            dataOutputStream.flush();
             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            //out.print(keyword);
-            System.out.println("encryptMsg: " + msg);
-            //out.print(msg);
-            //out.flush();
             String inLine;
             while((inLine = in.readLine()) != null)
             {
@@ -103,16 +96,35 @@ public class Client {
             if (emsg.isEmpty())
             {
                 System.err.println("No message received.");
-                System.exit(1);
+                throw new TestException(1, "No message received.");
             }
             in.close();
-            dataOutputStream.close(); // close the output stream when we're done.
+            dataOutputStream.close();
         }
         catch (SocketException e)
         {
             System.err.println("Socket exception: " + e.getMessage());
-            System.exit(1);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
         return emsg;
+    }
+}
+
+class TestException extends Exception {
+    private int errCode;
+    private String errMsg;
+
+    public TestException(int errCode, String errMsg)
+    {
+        this.errCode = errCode;
+        this.errMsg = errMsg;
+    }
+
+    public int getErrCode() {
+        return errCode;
+    }
+    public String getErrMsg() {
+        return errMsg;
     }
 }
